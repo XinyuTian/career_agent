@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Open questions — Career Agent{% endblock %}
+{% block content %}
+<h1>Open questions</h1>
+{% if questions %}
+<table>
+  <tr><th>Priority</th><th>Question</th><th>Why it matters</th><th>Related to</th></tr>
+  {% for question in questions %}
+  <tr class="priority-{{ question.priority }}">
+    <td>{{ question.priority }}</td>
+    <td>{{ question.question }}</td>
+    <td>{{ question.why_it_matters or "" }}</td>
+    <td>{{ question.related_entity_type }}:{{ question.related_entity_id }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty">No open questions right now.</p>
+{% endif %}
+{% endblock %}

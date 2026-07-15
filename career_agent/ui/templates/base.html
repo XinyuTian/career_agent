@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}Career Agent{% endblock %}</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    line-height: 1.45;
+  }
+  nav {
+    display: flex;
+    gap: 1rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid #888;
+  }
+  nav a { text-decoration: none; font-weight: bold; }
+  h1 { font-size: 1.25rem; margin: 0 0 1rem; }
+  h2 { font-size: 1.05rem; margin: 1.5rem 0 0.5rem; }
+  h3 { font-size: 0.95rem; margin: 1rem 0 0.35rem; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+  th, td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid #ccc; vertical-align: top; }
+  form { border: 1px solid #ccc; padding: 0.75rem; margin-bottom: 1.25rem; }
+  form label { display: block; margin-top: 0.5rem; font-size: 0.85rem; }
+  form input[type=text], form textarea {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+    padding: 0.3rem;
+    margin-top: 0.15rem;
+  }
+  form textarea { min-height: 6rem; }
+  button {
+    margin-top: 0.6rem;
+    font-family: inherit;
+    padding: 0.35rem 0.9rem;
+    cursor: pointer;
+  }
+  .flash {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 1rem;
+    border: 1px solid #666;
+    background: rgba(128, 128, 128, 0.12);
+  }
+  .empty { color: #777; font-style: italic; }
+  .priority-high { font-weight: bold; }
+  a.button-link {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid #888;
+    text-decoration: none;
+  }
+</style>
+</head>
+<body>
+<nav>
+  <a href="/">Experiences</a>
+  <a href="/open-questions">Open questions</a>
+</nav>
+{% if request.query_params.get("flash") %}
+<div class="flash">{{ request.query_params.get("flash") }}</div>
+{% endif %}
+{% block content %}{% endblock %}
+</body>
+</html>
