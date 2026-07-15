@@ -364,9 +364,13 @@
     let left = active.startLeft;
     let right = active.startRight;
     if (active.side === "left") {
-      left = Math.min(Math.max(MIN_SIDE, active.startLeft + dx), maxTotal - right);
+      const maxLeft = maxTotal - right;
+      if (maxLeft < MIN_SIDE) return;
+      left = Math.min(Math.max(MIN_SIDE, active.startLeft + dx), maxLeft);
     } else {
-      right = Math.min(Math.max(MIN_SIDE, active.startRight - dx), maxTotal - left);
+      const maxRight = maxTotal - left;
+      if (maxRight < MIN_SIDE) return;
+      right = Math.min(Math.max(MIN_SIDE, active.startRight - dx), maxRight);
     }
     applyWidths(left, right);
   }
