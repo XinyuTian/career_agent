@@ -22,6 +22,15 @@ def make_client(tmp_path, monkeypatch):
     return TestClient(create_app(db_path=db)), db
 
 
+def test_workspace_shell_includes_design_tokens(tmp_path, monkeypatch):
+    client, _ = make_client(tmp_path, monkeypatch)
+    r = client.get("/")
+    assert r.status_code == 200
+    assert b"--accent:" in r.content
+    assert b"--bg-panel:" in r.content
+    assert b"Inter" in r.content
+
+
 def test_workspace_shell_renders_three_panels(tmp_path, monkeypatch):
     client, _ = make_client(tmp_path, monkeypatch)
     r = client.get("/")
@@ -40,8 +49,9 @@ def test_home_lists_experiences(tmp_path, monkeypatch):
 
     r = client.get("/")
     assert r.status_code == 200
-    assert b"Career navigator" in r.content
-    assert b"Search experiences and projects" in r.content
+    assert b"Experiences" in r.content
+    assert b'placeholder="Search"' in r.content
+    assert b"+ Add" in r.content
     assert b"Acme" in r.content
     assert b"SWE" in r.content
 
@@ -117,6 +127,46 @@ def test_create_project_rejects_blank_name(tmp_path, monkeypatch):
     assert len(repo.list_projects("e1")) == 0
 
 
+def test_add_project_validation_preserves_selected_project(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Acme", title="SWE"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Search"))
+
+    r = client.post(
+        "/experiences/e1/projects",
+        data={"project_name": "   ", "selected_project_id": "p1"},
+        follow_redirects=False,
+    )
+
+    assert r.status_code == 400
+    assert b'name="selected_project_id" value="p1"' in r.content
+    assert b"/partials/tree?selected_project_id=p1" in r.content
+    assert len(repo.list_projects("e1")) == 1
+
+
+def test_overview_header_shows_status_badge_and_subtitle(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Google", title="Research Data Scientist"))
+    repo.create_project(
+        Project(
+            id="p1",
+            experience_id="e1",
+            project_name="Ad Blindness",
+            status="In progress",
+        )
+    )
+    r = client.get("/partials/projects/p1?tab=overview")
+    assert r.status_code == 200
+    assert b"Ad Blindness" in r.content
+    assert b"badge" in r.content
+    assert b"In progress" in r.content
+    assert b"Google" in r.content
+    assert b"Research Data Scientist" in r.content
+    assert b"class=\"tab is-active\"" in r.content or b"tab is-active" in r.content
+
+
 def test_project_tabs_show_leaf_sections(tmp_path, monkeypatch):
     client, db = make_client(tmp_path, monkeypatch)
     repo = CareerRepository(db)
@@ -161,9 +211,12 @@ def test_right_panel_shows_completeness(tmp_path, monkeypatch):
     repo.create_project(Project(id="p1", experience_id="e1", project_name="Ad Blindness"))
     r = client.get("/partials/projects/p1?tab=overview")
     assert r.status_code == 200
-    assert b"Project completeness" in r.content
+    assert b"Completeness" in r.content
+    assert b"Needs clarification" in r.content
+    assert b"progress__bar" in r.content
     assert b"Problem not set" in r.content or b"overview" in r.content.lower()
     assert b"Paste notes" in r.content
+    assert b"Continue interview" not in r.content
 
 
 def test_right_panel_notes_import(tmp_path, monkeypatch):
@@ -615,4 +668,55 @@ def test_skills_tab_save_create(tmp_path, monkeypatch):
     rows = CareerRepository(db).list_skill_evidence("p1")
     assert len(rows) == 1
     assert rows[0].skill == "Python"
+
+
+def test_add_experience_validation_preserves_selected_project(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Acme", title="SWE"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Search"))
+
+    r = client.post(
+        "/experiences",
+        data={
+            "organization": "   ",
+            "title": "SWE",
+            "selected_project_id": "p1",
+        },
+        follow_redirects=False,
+    )
+    assert r.status_code == 400
+    assert b'name="selected_project_id" value="p1"' in r.content
+    assert b"/partials/tree?selected_project_id=p1" in r.content
+    assert len(CareerRepository(db).list_experiences()) == 1
+
+
+def test_tree_marks_selected_project(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Acme", title="SWE"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Search"))
+    repo.create_project(Project(id="p2", experience_id="e1", project_name="Ads"))
+
+    r = client.get("/partials/tree?selected_project_id=p1")
+    assert r.status_code == 200
+    assert b'class="tree-project is-selected"' in r.content or b"tree-project is-selected" in r.content
+    assert b"Search" in r.content
+
+
+def test_project_overview_oob_selects_tree_project(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Google", title="SWE"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Ad Blindness"))
+
+    r = client.get("/partials/projects/p1?tab=overview&q=Ad")
+    assert r.status_code == 200
+    assert b'id="tree-panel"' in r.content
+    assert b"hx-swap-oob" in r.content
+    assert b"tree-project is-selected" in r.content
+    oob_tree = r.content.split(b'id="tree-panel"', 1)[1].split(b"</aside>", 1)[0]
+    assert b'<details open>' in oob_tree
+    assert b"Google" in oob_tree
+    assert b'value="Ad"' in oob_tree
 

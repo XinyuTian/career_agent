@@ -12,7 +12,7 @@
   <form hx-post="/projects/{{ project.id }}/notes" hx-target="#right-panel">
     <label for="notes">Project notes</label>
     <textarea id="notes" name="notes" rows="12" placeholder="Paste notes here"></textarea>
-    <button type="submit">Import notes</button>
+    <button type="submit" class="btn btn-primary">Import notes</button>
   </form>
 {% else %}
   <p class="muted">Select a project before importing notes.</p>

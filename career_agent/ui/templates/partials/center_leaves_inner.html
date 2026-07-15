@@ -1,6 +1,11 @@
-<header class="panel-header">
-  <h2>{{ project.project_name }}</h2>
-  <p class="muted">{{ experience.organization }} — {{ experience.title }}</p>
+<header class="panel-header project-header">
+  <div class="project-title-row">
+    <h2>{{ project.project_name }}</h2>
+    {% if project.status %}
+      <span class="badge">{{ project.status }}</span>
+    {% endif %}
+  </div>
+  <p class="muted">{{ experience.organization }} · {{ experience.title }}</p>
 </header>
 {% include "partials/center_tabs.html" %}
 
@@ -8,6 +13,7 @@
   <div class="overview-actions">
     <button
       type="button"
+      class="btn btn-primary"
       hx-get="/partials/projects/{{ project.id }}/edit?tab={{ active_tab }}"
       hx-target="#center-panel"
     >Edit</button>

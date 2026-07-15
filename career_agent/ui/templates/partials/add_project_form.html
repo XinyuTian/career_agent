@@ -9,7 +9,13 @@
   hx-post="/experiences/{{ experience.id }}/projects"
   hx-target="#tree-panel"
 >
+  <input type="hidden" name="selected_project_id" value="{{ selected_project_id | default('') }}">
   <label>Project name <input name="project_name" required value="{{ project_name | default('') }}"></label>
-  <button type="submit">Save</button>
-  <button type="button" hx-get="/partials/tree" hx-target="#tree-panel">Cancel</button>
+  <button type="submit" class="btn btn-primary">Save</button>
+  <button
+    type="button"
+    class="btn btn-secondary"
+    hx-get="/partials/tree?selected_project_id={{ selected_project_id | default('') }}"
+    hx-target="#tree-panel"
+  >Cancel</button>
 </form>

@@ -1,40 +1,49 @@
-<header class="panel-header">
-  <h1>Career navigator</h1>
+<header class="panel-header experiences-header">
+  <h1>Experiences</h1>
+  <button
+    type="button"
+    class="btn btn-secondary"
+    hx-get="/partials/add-experience?selected_project_id={{ selected_project_id | default('') }}"
+    hx-target="#tree-panel"
+  >+ Add</button>
 </header>
 <label class="search">
-  <span class="sr-only">Search experiences and projects</span>
+  <span class="sr-only">Search</span>
   <input
     type="search"
     name="q"
-    placeholder="Search experiences and projects"
+    placeholder="Search"
     value="{{ q | default('') }}"
     hx-get="/partials/tree"
     hx-trigger="keyup changed delay:200ms"
     hx-target="#tree-panel"
-    hx-include="this"
+    hx-include="[name='selected_project_id']"
   >
 </label>
-<button type="button" hx-get="/partials/add-experience" hx-target="#tree-panel">+ Add experience</button>
+<input type="hidden" name="selected_project_id" value="{{ selected_project_id | default('') }}">
 
-<nav aria-label="Career navigator">
+<nav aria-label="Experiences">
   {% if experiences %}
     <ul class="tree">
       {% for experience in experiences %}
         <li>
           <div class="experience-row">
-            <details>
+            {% set experience_projects = projects_by_experience.get(experience.id, []) %}
+            <details{% if experience_projects | selectattr("id", "equalto", selected_project_id) | list %} open{% endif %}>
               <summary>
-                <span>{{ experience.organization }} — {{ experience.title }}</span>
+                <span class="tree-org">{{ experience.organization }}</span>
+                <span class="tree-role">{{ experience.title }}</span>
               </summary>
-              {% set experience_projects = projects_by_experience.get(experience.id, []) %}
               {% if experience_projects %}
                 <ul>
                   {% for project in experience_projects %}
                     <li>
                       <a
                         href="#"
+                        class="tree-project{% if selected_project_id == project.id %} is-selected{% endif %}"
                         hx-get="/partials/projects/{{ project.id }}?tab=overview"
                         hx-target="#center-panel"
+                        hx-include="[name='q']"
                       >{{ project.project_name }}</a>
                     </li>
                   {% endfor %}
@@ -45,8 +54,9 @@
             </details>
             <button
               type="button"
+              class="btn btn-secondary"
               onclick="event.stopPropagation()"
-              hx-get="/partials/experiences/{{ experience.id }}/add-project"
+              hx-get="/partials/experiences/{{ experience.id }}/add-project?selected_project_id={{ selected_project_id | default('') }}"
               hx-target="#tree-panel"
             >+ Add project</button>
           </div>

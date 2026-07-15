@@ -8,9 +8,15 @@
   hx-post="/experiences"
   hx-target="#tree-panel"
 >
+  <input type="hidden" name="selected_project_id" value="{{ selected_project_id | default('') }}">
   <label>Organization <input name="organization" required value="{{ organization | default('') }}"></label>
   <label>Title <input name="title" required value="{{ title | default('') }}"></label>
   <label>Start date <input name="start_date" value="{{ start_date | default('') }}"></label>
-  <button type="submit">Save</button>
-  <button type="button" hx-get="/partials/tree" hx-target="#tree-panel">Cancel</button>
+  <button type="submit" class="btn btn-primary">Save</button>
+  <button
+    type="button"
+    class="btn btn-secondary"
+    hx-get="/partials/tree?selected_project_id={{ selected_project_id | default('') }}"
+    hx-target="#tree-panel"
+  >Cancel</button>
 </form>

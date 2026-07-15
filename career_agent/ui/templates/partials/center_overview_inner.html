@@ -1,6 +1,11 @@
-<header class="panel-header">
-  <h2>{{ project.project_name }}</h2>
-  <p class="muted">{{ experience.organization }} — {{ experience.title }}</p>
+<header class="panel-header project-header">
+  <div class="project-title-row">
+    <h2>{{ project.project_name }}</h2>
+    {% if project.status %}
+      <span class="badge">{{ project.status }}</span>
+    {% endif %}
+  </div>
+  <p class="muted">{{ experience.organization }} · {{ experience.title }}</p>
 </header>
 {% include "partials/center_tabs.html" %}
 
@@ -8,38 +13,52 @@
   <div class="overview-actions">
     <button
       type="button"
+      class="btn btn-primary"
       hx-get="/partials/projects/{{ project.id }}/edit?tab=overview"
       hx-target="#center-panel"
     >Edit</button>
   </div>
-  <dl class="overview-fields">
-    <dt>Problem</dt>
-    <dd>{% if project.problem %}{{ project.problem }}{% else %}<span class="muted">Not set yet</span>{% endif %}</dd>
-    <dt>Business context</dt>
-    <dd>{% if project.business_context %}{{ project.business_context }}{% else %}<span class="muted">Not set yet</span>{% endif %}</dd>
-    <dt>Your role</dt>
-    <dd>{% if project.personal_role %}{{ project.personal_role }}{% else %}<span class="muted">Not set yet</span>{% endif %}</dd>
-    <dt>Stakeholders</dt>
-    <dd>{% if project.users_or_stakeholders %}{{ project.users_or_stakeholders }}{% else %}<span class="muted">Not set yet</span>{% endif %}</dd>
-    <dt>Responsibilities</dt>
-    <dd>
-      {% if project.responsibilities %}
-        <ul>
-          {% for item in project.responsibilities %}
-            <li>{{ item }}</li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <span class="muted">Not set yet</span>
-      {% endif %}
-    </dd>
-    <dt>Stage</dt>
-    <dd>{% if project.project_stage %}{{ project.project_stage }}{% else %}<span class="muted">Not set yet</span>{% endif %}</dd>
-    <dt>Timeline</dt>
-    <dd>{% if project.timeline %}{{ project.timeline }}{% else %}<span class="muted">Not set yet</span>{% endif %}</dd>
-    <dt>Status</dt>
-    <dd>{% if project.status %}{{ project.status }}{% else %}<span class="muted">Not set yet</span>{% endif %}</dd>
-  </dl>
+
+  <div class="overview-section">
+    <h3>Problem</h3>
+    <p>{% if project.problem %}{{ project.problem }}{% else %}<span class="muted">Not set yet</span>{% endif %}</p>
+  </div>
+  <div class="overview-section">
+    <h3>Business context</h3>
+    <p>{% if project.business_context %}{{ project.business_context }}{% else %}<span class="muted">Not set yet</span>{% endif %}</p>
+  </div>
+  <div class="overview-section">
+    <h3>Your role</h3>
+    <p>{% if project.personal_role %}{{ project.personal_role }}{% else %}<span class="muted">Not set yet</span>{% endif %}</p>
+  </div>
+  <div class="overview-section">
+    <h3>Stakeholders</h3>
+    <p>{% if project.users_or_stakeholders %}{{ project.users_or_stakeholders }}{% else %}<span class="muted">Not set yet</span>{% endif %}</p>
+  </div>
+  <div class="overview-section">
+    <h3>Responsibilities</h3>
+    {% if project.responsibilities %}
+      <ul>
+        {% for item in project.responsibilities %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">Not set yet</p>
+    {% endif %}
+  </div>
+  <div class="overview-section">
+    <h3>Stage</h3>
+    <p>{% if project.project_stage %}{{ project.project_stage }}{% else %}<span class="muted">Not set yet</span>{% endif %}</p>
+  </div>
+  <div class="overview-section">
+    <h3>Timeline</h3>
+    <p>{% if project.timeline %}{{ project.timeline }}{% else %}<span class="muted">Not set yet</span>{% endif %}</p>
+  </div>
+  <div class="overview-section">
+    <h3>Status</h3>
+    <p>{% if project.status %}{{ project.status }}{% else %}<span class="muted">Not set yet</span>{% endif %}</p>
+  </div>
 </section>
 
 <footer class="counts-footer">

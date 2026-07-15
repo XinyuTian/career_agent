@@ -1,6 +1,11 @@
-<header class="panel-header">
-  <h2>{{ project.project_name }}</h2>
-  <p class="muted">{{ experience.organization }} — {{ experience.title }}</p>
+<header class="panel-header project-header">
+  <div class="project-title-row">
+    <h2>{{ project.project_name }}</h2>
+    {% if project.status %}
+      <span class="badge">{{ project.status }}</span>
+    {% endif %}
+  </div>
+  <p class="muted">{{ experience.organization }} · {{ experience.title }}</p>
 </header>
 {% include "partials/center_tabs.html" %}
 
@@ -56,9 +61,10 @@
       {% endfor %}
     </fieldset>
     <div class="form-actions">
-      <button type="submit">Save</button>
+      <button type="submit" class="btn btn-primary">Save</button>
       <button
         type="button"
+        class="btn btn-secondary"
         hx-get="/partials/projects/{{ project.id }}?tab={{ active_tab }}"
         hx-target="#center-panel"
       >Cancel</button>

@@ -1,6 +1,12 @@
 <section class="completeness-block">
-  <p class="completeness-score">Project completeness: {{ completeness.percent }}%</p>
-  <h3 class="completeness-heading">Missing</h3>
+  <div class="completeness-row">
+    <h3 class="completeness-heading">Completeness</h3>
+    <span class="completeness-percent">{{ completeness.percent }}%</span>
+  </div>
+  <div class="progress" aria-hidden="true">
+    <div class="progress__bar" style="width: {{ completeness.percent }}%"></div>
+  </div>
+  <h3 class="completeness-heading">Needs clarification</h3>
   {% if completeness.missing %}
     <ul class="gap-list">
       {% for gap in completeness.missing %}
@@ -9,14 +15,14 @@
           <span class="gap-actions">
             <button
               type="button"
-              class="gap-action"
+              class="btn btn-secondary gap-action"
               hx-get="/projects/{{ project.id }}/gaps/answer-form"
               hx-vals='{"gap_key": "{{ gap.key }}"}'
               hx-target="#right-panel"
             >Answer now</button>
             <button
               type="button"
-              class="gap-action"
+              class="btn btn-secondary gap-action"
               hx-post="/projects/{{ project.id }}/gaps/unknown"
               hx-vals='{"gap_key": "{{ gap.key }}"}'
               hx-target="#right-panel"
@@ -29,10 +35,10 @@
                 Answer
                 <textarea name="answer" rows="3" required></textarea>
               </label>
-              <button type="submit" class="gap-action">Submit</button>
+              <button type="submit" class="btn btn-primary gap-action">Submit</button>
               <button
                 type="button"
-                class="gap-action"
+                class="btn btn-secondary gap-action"
                 hx-get="/projects/{{ project.id }}/gaps/answer-form?gap_key={{ gap.key }}&cancel=true"
                 hx-target="#right-panel"
               >Cancel</button>

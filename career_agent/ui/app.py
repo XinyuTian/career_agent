@@ -386,6 +386,8 @@ def _render_leaves_read(
     repo: CareerRepository,
     project_id: str,
     tab: str,
+    *,
+    q: str | None = None,
 ) -> Any:
     project, experience, counts = _load_project_context(repo, project_id)
     items = [asdict(item) for item in _list_leaf_entities(repo, project_id, tab)]
@@ -400,6 +402,11 @@ def _render_leaves_read(
             "items": items,
             "field_defs": _LEAF_FIELD_DEFS[tab],
             **_right_panel_context(repo, project),
+            **_tree_template_context(
+                repo,
+                q=q,
+                selected_project_id=project_id,
+            ),
         },
     )
 
@@ -513,6 +520,8 @@ def _render_overview_read(
     request: Request,
     repo: CareerRepository,
     project_id: str,
+    *,
+    q: str | None = None,
 ) -> Any:
     project, experience, counts = _load_project_context(repo, project_id)
     return templates.TemplateResponse(
@@ -524,6 +533,11 @@ def _render_overview_read(
             "counts": counts,
             "active_tab": "overview",
             **_right_panel_context(repo, project),
+            **_tree_template_context(
+                repo,
+                q=q,
+                selected_project_id=project_id,
+            ),
         },
     )
 
@@ -667,21 +681,32 @@ def _render_overview_edit(
     )
 
 
+def _tree_template_context(
+    repo: CareerRepository,
+    *,
+    q: str | None = None,
+    selected_project_id: str | None = None,
+) -> dict[str, Any]:
+    experiences, projects_by_experience = _tree_data(repo, q)
+    return {
+        "experiences": experiences,
+        "projects_by_experience": projects_by_experience,
+        "q": q or "",
+        "selected_project_id": selected_project_id or "",
+    }
+
+
 def _render_tree(
     request: Request,
     repo: CareerRepository,
     *,
     q: str | None = None,
+    selected_project_id: str | None = None,
 ) -> Any:
-    experiences, projects_by_experience = _tree_data(repo, q)
     return templates.TemplateResponse(
         request,
         "partials/tree.html",
-        {
-            "experiences": experiences,
-            "projects_by_experience": projects_by_experience,
-            "q": q or "",
-        },
+        _tree_template_context(repo, q=q, selected_project_id=selected_project_id),
     )
 
 
@@ -703,19 +728,40 @@ def create_app(db_path: Path | None = None) -> FastAPI:
             {
                 "experiences": experiences,
                 "projects_by_experience": projects_by_experience,
+                "selected_project_id": "",
             },
         )
 
     @app.get("/partials/tree")
-    def partial_tree(request: Request, q: str = ""):
-        return _render_tree(request, get_repo(), q=q or None)
+    def partial_tree(
+        request: Request,
+        q: str = "",
+        selected_project_id: str = "",
+    ):
+        return _render_tree(
+            request,
+            get_repo(),
+            q=q or None,
+            selected_project_id=selected_project_id or None,
+        )
 
     @app.get("/partials/add-experience")
-    def partial_add_experience(request: Request):
-        return templates.TemplateResponse(request, "partials/add_experience_form.html", {})
+    def partial_add_experience(
+        request: Request,
+        selected_project_id: str = "",
+    ):
+        return templates.TemplateResponse(
+            request,
+            "partials/add_experience_form.html",
+            {"selected_project_id": selected_project_id},
+        )
 
     @app.get("/partials/experiences/{experience_id}/add-project")
-    def partial_add_project(request: Request, experience_id: str):
+    def partial_add_project(
+        request: Request,
+        experience_id: str,
+        selected_project_id: str = "",
+    ):
         repo = get_repo()
         experience = repo.get_experience(experience_id)
         if experience is None:
@@ -723,7 +769,10 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         return templates.TemplateResponse(
             request,
             "partials/add_project_form.html",
-            {"experience": experience},
+            {
+                "experience": experience,
+                "selected_project_id": selected_project_id,
+            },
         )
 
     @app.get("/partials/projects/{project_id}")
@@ -731,11 +780,23 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         request: Request,
         project_id: str,
         tab: str = "overview",
+        q: str = "",
     ):
         if tab == "overview":
-            return _render_overview_read(request, get_repo(), project_id)
+            return _render_overview_read(
+                request,
+                get_repo(),
+                project_id,
+                q=q or None,
+            )
         if tab in _LEAF_TABS:
-            return _render_leaves_read(request, get_repo(), project_id, tab)
+            return _render_leaves_read(
+                request,
+                get_repo(),
+                project_id,
+                tab,
+                q=q or None,
+            )
         raise HTTPException(status_code=404, detail="Tab not found")
 
     @app.get("/partials/projects/{project_id}/edit")
@@ -805,6 +866,7 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         business_context: str = Form(""),
         reason_for_joining: str = Form(""),
         reason_for_leaving: str = Form(""),
+        selected_project_id: str = Form(""),
     ):
         repo = get_repo()
         organization = organization.strip()
@@ -819,6 +881,7 @@ def create_app(db_path: Path | None = None) -> FastAPI:
                         "organization": organization,
                         "title": title,
                         "start_date": start_date.strip(),
+                        "selected_project_id": selected_project_id,
                     },
                     status_code=400,
                 )
@@ -830,6 +893,7 @@ def create_app(db_path: Path | None = None) -> FastAPI:
                     "organization": organization,
                     "title": title,
                     "start_date": start_date.strip(),
+                    "selected_project_id": selected_project_id,
                 },
                 status_code=400,
             )
@@ -864,6 +928,7 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         project_stage: str = Form(""),
         timeline: str = Form(""),
         status: str = Form(""),
+        selected_project_id: str = Form(""),
     ):
         repo = get_repo()
         experience = repo.get_experience(experience_id)
@@ -879,6 +944,7 @@ def create_app(db_path: Path | None = None) -> FastAPI:
                         "experience": experience,
                         "error": "Project name is required.",
                         "project_name": project_name,
+                        "selected_project_id": selected_project_id,
                     },
                     status_code=400,
                 )
@@ -889,6 +955,7 @@ def create_app(db_path: Path | None = None) -> FastAPI:
                     "experience": experience,
                     "error": "Project name is required.",
                     "project_name": project_name,
+                    "selected_project_id": selected_project_id,
                 },
                 status_code=400,
             )
