@@ -22,6 +22,43 @@ def make_client(tmp_path, monkeypatch):
     return TestClient(create_app(db_path=db)), db
 
 
+def _compute_default_widths(viewport_width: int, chrome: int = 80) -> tuple[int, int]:
+    min_side, min_center = 180, 360
+    left_max, right_max = 360, 420
+    available = max(viewport_width - chrome, min_side * 2 + min_center)
+    left = min(left_max, max(min_side, round(viewport_width * 0.20)))
+    right = min(right_max, max(200, round(viewport_width * 0.24)))
+    overflow = left + right + min_center - available
+    if overflow > 0:
+        total = left + right
+        left = max(min_side, round(left - (overflow * left) / total))
+        right = max(min_side, round(right - (overflow * right) / total))
+        while left + right + min_center > available and (left > min_side or right > min_side):
+            if left >= right and left > min_side:
+                left -= 1
+            elif right > min_side:
+                right -= 1
+            else:
+                break
+    return left, right
+
+
+def test_default_width_formula_scales_and_clamps():
+    wide_l, wide_r = _compute_default_widths(1600)
+    narrow_l, narrow_r = _compute_default_widths(900)
+    assert wide_l >= narrow_l or wide_r >= narrow_r
+    assert 180 <= narrow_l <= 360
+    assert 180 <= narrow_r <= 420
+    assert narrow_l + narrow_r + 360 <= 900
+
+
+def test_workspace_script_has_no_window_resize_recompute(tmp_path, monkeypatch):
+    client, _ = make_client(tmp_path, monkeypatch)
+    html = client.get("/").text
+    assert 'addEventListener("resize"' not in html
+    assert "addEventListener('resize'" not in html
+
+
 def test_workspace_shell_includes_design_tokens(tmp_path, monkeypatch):
     client, _ = make_client(tmp_path, monkeypatch)
     r = client.get("/")
