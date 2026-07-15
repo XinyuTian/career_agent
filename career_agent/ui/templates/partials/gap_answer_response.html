@@ -1,0 +1,8 @@
+{% include "partials/right_notes.html" %}
+<div id="center-panel" hx-swap-oob="true">
+  {% if active_tab == "overview" %}
+    {% include "partials/center_overview_inner.html" %}
+  {% else %}
+    {% include "partials/center_leaves_inner.html" %}
+  {% endif %}
+</div>

@@ -260,6 +260,25 @@ class CareerRepository:
     def create_open_question(self, question: OpenQuestion) -> None:
         self._create(question)
 
+    def update_open_question(self, question: OpenQuestion) -> None:
+        self._update(question)
+
+    def dismiss_gap(self, project_id: str, gap_key: str) -> None:
+        self.conn.execute(
+            """
+            INSERT OR IGNORE INTO dismissed_gaps (project_id, gap_key, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (project_id, gap_key, now_iso()),
+        )
+
+    def list_dismissed_gap_keys(self, project_id: str) -> set[str]:
+        rows = self.conn.execute(
+            "SELECT gap_key FROM dismissed_gaps WHERE project_id = ?",
+            (project_id,),
+        ).fetchall()
+        return {row["gap_key"] for row in rows}
+
     def list_open_questions(
         self,
         status: str | None = "open",

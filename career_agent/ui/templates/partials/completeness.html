@@ -1,0 +1,48 @@
+<section class="completeness-block">
+  <p class="completeness-score">Project completeness: {{ completeness.percent }}%</p>
+  <h3 class="completeness-heading">Missing</h3>
+  {% if completeness.missing %}
+    <ul class="gap-list">
+      {% for gap in completeness.missing %}
+        <li class="gap-row">
+          <span class="gap-label">{{ gap.label }}</span>
+          <span class="gap-actions">
+            <button
+              type="button"
+              class="gap-action"
+              hx-get="/projects/{{ project.id }}/gaps/answer-form"
+              hx-vals='{"gap_key": "{{ gap.key }}"}'
+              hx-target="#right-panel"
+            >Answer now</button>
+            <button
+              type="button"
+              class="gap-action"
+              hx-post="/projects/{{ project.id }}/gaps/unknown"
+              hx-vals='{"gap_key": "{{ gap.key }}"}'
+              hx-target="#right-panel"
+            >Mark as unknown</button>
+          </span>
+          {% if expanded_gap_key == gap.key %}
+            <form class="gap-answer-form" hx-post="/projects/{{ project.id }}/gaps/answer" hx-target="#right-panel">
+              <input type="hidden" name="gap_key" value="{{ gap.key }}">
+              <label>
+                Answer
+                <textarea name="answer" rows="3" required></textarea>
+              </label>
+              <button type="submit" class="gap-action">Submit</button>
+              <button
+                type="button"
+                class="gap-action"
+                hx-get="/projects/{{ project.id }}/gaps/answer-form?gap_key={{ gap.key }}&cancel=true"
+                hx-target="#right-panel"
+              >Cancel</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">Nothing missing — great work.</p>
+  {% endif %}
+</section>
+<hr class="panel-divider">

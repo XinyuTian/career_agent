@@ -82,7 +82,7 @@ Then open http://127.0.0.1:8765 (or the `--port` you chose).
 |-------|---------|
 | **Left — Navigator** | Search experiences and projects; **+ Add experience** under search; **+ Add project** beside each org row. Click an experience to expand/collapse; click a project to load it in the center. |
 | **Center — Project workspace** | Tabs: Overview, Contributions, Results, Skills, Stories. Each tab has **Edit** / **Save** / **Cancel** at panel level. Overview uses existing project fields only. |
-| **Right — Paste notes** | Paste free-text notes for the selected project; runs scoped Agent 1 import and shows created/updated/conflict summary. Disabled until a project is selected. |
+| **Right — Completeness & notes** | **Completeness assistant** (top): project completeness % and missing gaps (structural fields plus open questions); hover or focus a gap for **Answer now** / **Mark as unknown**. **Paste notes** (below): paste free-text notes for the selected project; runs scoped Agent 1 import and shows created/updated/conflict summary. Disabled until a project is selected. |
 
 Create endpoints (`POST /experiences`, `POST /experiences/{id}/projects`) and
 `POST /projects/{id}/notes` remain available for HTMX partial updates and

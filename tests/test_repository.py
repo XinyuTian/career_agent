@@ -273,3 +273,24 @@ def test_delete_contribution_cleans_embedding(tmp_path):
 
     assert repo.delete_contribution("c1") is True
     assert repo.counts()["embeddings"] == 0
+
+
+def test_dismiss_gap_roundtrip(tmp_path):
+    repo = CareerRepository(tmp_path / "t.db")
+    repo.create_experience(Experience(id="e1", organization="Acme", title="SWE", start_date="2020"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="P"))
+    repo.dismiss_gap("p1", "overview.problem")
+    assert "overview.problem" in repo.list_dismissed_gap_keys("p1")
+    repo.dismiss_gap("p1", "overview.problem")  # idempotent
+    assert repo.list_dismissed_gap_keys("p1") == {"overview.problem"}
+
+
+def test_update_open_question_status(tmp_path):
+    repo = CareerRepository(tmp_path / "t.db")
+    repo.create_experience(Experience(id="e1", organization="Acme", title="SWE", start_date="2020"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="P"))
+    q = OpenQuestion(id="q1", related_entity_type="project", related_entity_id="p1", question="Metric?")
+    repo.create_open_question(q)
+    q.status = "dismissed"
+    repo.update_open_question(q)
+    assert repo.list_open_questions(status="dismissed")[0].id == "q1"

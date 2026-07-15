@@ -18,6 +18,7 @@ from fastapi.templating import Jinja2Templates
 from .. import config
 from ..agents import CareerKnowledgeBuilderAgent
 from ..ai_builder import AIBuilderClient
+from ..completeness import CompletenessReport, GapItem, evaluate_project_completeness
 from ..config import load_settings
 from ..models import Contribution, Experience, Project, Result, SkillEvidence, Story
 from ..repository import CareerRepository
@@ -398,6 +399,7 @@ def _render_leaves_read(
             "active_tab": tab,
             "items": items,
             "field_defs": _LEAF_FIELD_DEFS[tab],
+            **_right_panel_context(repo, project),
         },
     )
 
@@ -487,6 +489,26 @@ def _load_project_context(
     return project, experience, _project_counts(repo, project_id)
 
 
+def _right_panel_context(
+    repo: CareerRepository,
+    project: Project | None,
+) -> dict[str, CompletenessReport | None]:
+    if project is None:
+        return {"completeness": None}
+    project_id = project.id
+    return {
+        "completeness": evaluate_project_completeness(
+            project=project,
+            contributions=repo.list_contributions(project_id),
+            results=repo.list_results(project_id),
+            skills=repo.list_skill_evidence(project_id),
+            stories=repo.list_stories(project_id),
+            open_questions=repo.list_open_questions(status="open"),
+            dismissed_keys=repo.list_dismissed_gap_keys(project_id),
+        ),
+    }
+
+
 def _render_overview_read(
     request: Request,
     repo: CareerRepository,
@@ -501,6 +523,7 @@ def _render_overview_read(
             "experience": experience,
             "counts": counts,
             "active_tab": "overview",
+            **_right_panel_context(repo, project),
         },
     )
 
@@ -522,6 +545,106 @@ def _render_notes_import_response(
             "counts": counts,
             "active_tab": "overview",
             "message": message,
+            **_right_panel_context(repo, project),
+        },
+    )
+
+
+def _render_right_panel(
+    request: Request,
+    repo: CareerRepository,
+    project_id: str,
+    *,
+    message: str | None = None,
+    expanded_gap_key: str | None = None,
+) -> Any:
+    project = repo.get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return templates.TemplateResponse(
+        request,
+        "partials/right_notes.html",
+        {
+            "project": project,
+            "message": message,
+            "expanded_gap_key": expanded_gap_key,
+            **_right_panel_context(repo, project),
+        },
+    )
+
+
+def _gap_for_key(repo: CareerRepository, project: Project, gap_key: str) -> GapItem | None:
+    report = _right_panel_context(repo, project)["completeness"]
+    assert report is not None
+    return next((gap for gap in report.checklist if gap.key == gap_key), None)
+
+
+def _update_leaf_field(repo: CareerRepository, gap: GapItem, answer: str) -> bool:
+    if gap.entity_id is None or gap.field_name is None:
+        return False
+    if gap.entity_type == "contribution":
+        entity = repo.get_contribution(gap.entity_id)
+        if entity is not None:
+            repo.update_contribution(replace(entity, **{gap.field_name: answer}))
+            return True
+    elif gap.entity_type == "result":
+        entity = repo.get_result(gap.entity_id)
+        if entity is not None:
+            repo.update_result(replace(entity, **{gap.field_name: answer}))
+            return True
+    elif gap.entity_type == "skill_evidence":
+        entity = repo.get_skill_evidence(gap.entity_id)
+        if entity is not None:
+            repo.update_skill_evidence(replace(entity, **{gap.field_name: answer}))
+            return True
+    return False
+
+
+def _render_gap_answer_response(
+    request: Request,
+    repo: CareerRepository,
+    project_id: str,
+    gap: GapItem,
+) -> Any:
+    project, experience, counts = _load_project_context(repo, project_id)
+    if gap.kind == "overview_field":
+        active_tab = "overview"
+        items: list[dict[str, Any]] = []
+        field_defs: list[LeafFieldDef] = []
+    else:
+        active_tab = (
+            {
+                "coverage.contributions": "contributions",
+                "coverage.results": "results",
+                "coverage.skills": "skills",
+                "coverage.stories": "stories",
+            }.get(gap.key)
+            if gap.kind == "coverage"
+            else {
+                "contribution": "contributions",
+                "result": "results",
+                "skill_evidence": "skills",
+                "story": "stories",
+            }.get(gap.entity_type or "", "overview")
+        )
+        active_tab = active_tab or "overview"
+        items = (
+            [asdict(item) for item in _list_leaf_entities(repo, project_id, active_tab)]
+            if active_tab in _LEAF_TABS
+            else []
+        )
+        field_defs = _LEAF_FIELD_DEFS.get(active_tab, [])
+    return templates.TemplateResponse(
+        request,
+        "partials/gap_answer_response.html",
+        {
+            "project": project,
+            "experience": experience,
+            "counts": counts,
+            "active_tab": active_tab,
+            "items": items,
+            "field_defs": field_defs,
+            **_right_panel_context(repo, project),
         },
     )
 
@@ -814,6 +937,122 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         if _is_htmx(request):
             return _render_notes_import_response(request, repo, project_id, message=message)
         return _redirect("/", flash=message)
+
+    @app.post("/projects/{project_id}/gaps/unknown")
+    def mark_gap_unknown(
+        request: Request,
+        project_id: str,
+        gap_key: str = Form(...),
+    ):
+        repo = get_repo()
+        project = repo.get_project(project_id)
+        if project is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        gap = _gap_for_key(repo, project, gap_key)
+        if gap is None:
+            return _render_right_panel(
+                request, repo, project_id, message="That missing item is no longer available."
+            )
+        if gap.kind == "open_question" and gap.open_question_id:
+            question = next(
+                (
+                    question
+                    for question in repo.list_open_questions(status="open")
+                    if question.id == gap.open_question_id
+                ),
+                None,
+            )
+            if question is None:
+                return _render_right_panel(
+                    request, repo, project_id, message="That question is no longer available."
+                )
+            repo.update_open_question(replace(question, status="dismissed"))
+        else:
+            repo.dismiss_gap(project_id, gap.key)
+        return _render_right_panel(request, repo, project_id)
+
+    @app.get("/projects/{project_id}/gaps/answer-form")
+    def gap_answer_form(
+        request: Request,
+        project_id: str,
+        gap_key: str,
+        cancel: bool = False,
+    ):
+        repo = get_repo()
+        project = repo.get_project(project_id)
+        if project is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        if _gap_for_key(repo, project, gap_key) is None:
+            return _render_right_panel(
+                request, repo, project_id, message="That missing item is no longer available."
+            )
+        return _render_right_panel(
+            request,
+            repo,
+            project_id,
+            expanded_gap_key=None if cancel else gap_key,
+        )
+
+    @app.post("/projects/{project_id}/gaps/answer")
+    def answer_gap(
+        request: Request,
+        project_id: str,
+        gap_key: str = Form(...),
+        answer: str = Form(...),
+    ):
+        repo = get_repo()
+        project = repo.get_project(project_id)
+        if project is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        gap = _gap_for_key(repo, project, gap_key)
+        answer = answer.strip()
+        if gap is None:
+            return _render_right_panel(
+                request, repo, project_id, message="That missing item is no longer available."
+            )
+        if not answer:
+            return _render_right_panel(
+                request,
+                repo,
+                project_id,
+                message="Please enter an answer.",
+                expanded_gap_key=gap_key,
+            )
+        try:
+            if gap.kind == "overview_field" and gap.field_name:
+                repo.update_project(replace(project, **{gap.field_name: answer}))
+            elif gap.kind == "leaf_field":
+                if not _update_leaf_field(repo, gap, answer):
+                    raise ValueError("The related record no longer exists.")
+            elif gap.kind == "coverage":
+                build_agent(repo).extract_from_notes(answer, project_id=project_id)
+            elif gap.kind == "open_question" and gap.open_question_id:
+                question = next(
+                    (
+                        question
+                        for question in repo.list_open_questions(status="open")
+                        if question.id == gap.open_question_id
+                    ),
+                    None,
+                )
+                if question is None:
+                    raise ValueError("That question is no longer available.")
+                build_agent(repo).extract_from_notes(
+                    f"Question: {question.question}\nAnswer: {answer}",
+                    project_id=project_id,
+                )
+                repo.update_open_question(replace(question, status="resolved"))
+            else:
+                raise ValueError("This missing item cannot be answered.")
+        except Exception as exc:  # noqa: BLE001 - surfaced to the user in the right panel
+            return _render_right_panel(
+                request,
+                repo,
+                project_id,
+                message=f"Answer failed: {exc}",
+                expanded_gap_key=gap_key,
+            )
+        return _render_gap_answer_response(request, repo, project_id, gap)
 
     return app
 

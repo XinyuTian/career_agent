@@ -12,6 +12,7 @@ from career_agent.models import (
     Result,
     SkillEvidence,
     Story,
+    OpenQuestion,
 )
 
 
@@ -153,6 +154,18 @@ def test_project_partial_404_for_missing_project(tmp_path, monkeypatch):
     assert r.status_code == 404
 
 
+def test_right_panel_shows_completeness(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Google", title="SWE", start_date="2021"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Ad Blindness"))
+    r = client.get("/partials/projects/p1?tab=overview")
+    assert r.status_code == 200
+    assert b"Project completeness" in r.content
+    assert b"Problem not set" in r.content or b"overview" in r.content.lower()
+    assert b"Paste notes" in r.content
+
+
 def test_right_panel_notes_import(tmp_path, monkeypatch):
     client, db = make_client(tmp_path, monkeypatch)
     repo = CareerRepository(db)
@@ -175,6 +188,176 @@ def test_right_panel_notes_import(tmp_path, monkeypatch):
     )
     assert r.status_code == 200
     assert b"Import complete" in r.content or b"created" in r.content.lower()
+
+
+def test_mark_unknown_dismisses_overview_gap(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Google", title="SWE", start_date="2021"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Ad Blindness"))
+
+    r = client.post(
+        "/projects/p1/gaps/unknown",
+        data={"gap_key": "overview.problem"},
+        headers={"HX-Request": "true"},
+    )
+
+    assert r.status_code == 200
+    assert "overview.problem" in CareerRepository(db).list_dismissed_gap_keys("p1")
+    assert b"Problem not set" not in r.content
+
+
+def test_mark_unknown_dismisses_open_question(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Google", title="SWE", start_date="2021"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Ad Blindness"))
+    repo.create_open_question(
+        OpenQuestion(
+            id="oq1",
+            related_entity_type="project",
+            related_entity_id="p1",
+            question="What changed?",
+        )
+    )
+
+    r = client.post(
+        "/projects/p1/gaps/unknown",
+        data={"gap_key": "open_question.oq1"},
+        headers={"HX-Request": "true"},
+    )
+
+    assert r.status_code == 200
+    questions = CareerRepository(db).list_open_questions(status=None)
+    assert next(question for question in questions if question.id == "oq1").status == "dismissed"
+    assert b"What changed?" not in r.content
+
+
+def test_answer_form_expands_for_gap(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Google", title="SWE", start_date="2021"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Ad Blindness"))
+
+    r = client.get(
+        "/projects/p1/gaps/answer-form",
+        params={"gap_key": "overview.problem"},
+        headers={"HX-Request": "true"},
+    )
+
+    assert r.status_code == 200
+    assert b'name="answer"' in r.content
+    assert b'name="gap_key" value="overview.problem"' in r.content
+
+
+def test_answer_now_patches_overview_field(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Google", title="SWE", start_date="2021"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Ad Blindness"))
+
+    r = client.post(
+        "/projects/p1/gaps/answer",
+        data={"gap_key": "overview.problem", "answer": "Users ignore ads"},
+        headers={"HX-Request": "true"},
+    )
+
+    assert r.status_code == 200
+    assert CareerRepository(db).get_project("p1").problem == "Users ignore ads"
+    assert b"Problem not set" not in r.content
+
+
+def test_answer_now_patches_contribution_ownership_and_refreshes_center(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Google", title="SWE", start_date="2021"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Ad Blindness"))
+    repo.create_contribution(Contribution(id="c1", project_id="p1", action="Led study"))
+
+    r = client.post(
+        "/projects/p1/gaps/answer",
+        data={
+            "gap_key": "contribution.c1.ownership_level",
+            "answer": "Accountable owner",
+        },
+        headers={"HX-Request": "true"},
+    )
+
+    assert r.status_code == 200
+    assert CareerRepository(db).get_contribution("c1").ownership_level == "Accountable owner"
+    assert b'id="center-panel" hx-swap-oob="true"' in r.content
+    assert b"Accountable owner" in r.content
+
+
+def test_answer_now_routes_coverage_to_agent_and_refreshes_matching_leaf_tab(
+    tmp_path, monkeypatch
+):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Google", title="SWE", start_date="2021"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Ad Blindness"))
+    calls = {}
+
+    class FakeAgent:
+        def extract_from_notes(self, notes, *, project_id=None):
+            calls["notes"] = notes
+            calls["project_id"] = project_id
+            CareerRepository(db).create_contribution(
+                Contribution(id="c1", project_id="p1", action="Led study")
+            )
+            return {"created": {"contributions": 1}, "updated": {}, "conflicts": []}
+
+    monkeypatch.setattr(ui_app, "build_agent", lambda repo: FakeAgent())
+    r = client.post(
+        "/projects/p1/gaps/answer",
+        data={"gap_key": "coverage.contributions", "answer": "I led the ad blindness study."},
+        headers={"HX-Request": "true"},
+    )
+
+    assert r.status_code == 200
+    assert calls == {"notes": "I led the ad blindness study.", "project_id": "p1"}
+    assert len(CareerRepository(db).list_contributions("p1")) == 1
+    assert b"No contributions recorded" not in r.content
+    assert b'id="center-panel" hx-swap-oob="true"' in r.content
+    assert b"Led study" in r.content
+
+
+def test_answer_now_resolves_open_question_after_import(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Google", title="SWE", start_date="2021"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Ad Blindness"))
+    repo.create_open_question(
+        OpenQuestion(
+            id="oq1",
+            related_entity_type="project",
+            related_entity_id="p1",
+            question="What changed?",
+        )
+    )
+    calls = {}
+
+    class FakeAgent:
+        def extract_from_notes(self, notes, *, project_id=None):
+            calls["notes"] = notes
+            calls["project_id"] = project_id
+            return {"created": {}, "updated": {}, "conflicts": []}
+
+    monkeypatch.setattr(ui_app, "build_agent", lambda repo: FakeAgent())
+    r = client.post(
+        "/projects/p1/gaps/answer",
+        data={"gap_key": "open_question.oq1", "answer": "We reduced ad frequency."},
+        headers={"HX-Request": "true"},
+    )
+
+    assert r.status_code == 200
+    assert calls == {
+        "notes": "Question: What changed?\nAnswer: We reduced ad frequency.",
+        "project_id": "p1",
+    }
+    questions = CareerRepository(db).list_open_questions(status=None)
+    assert next(question for question in questions if question.id == "oq1").status == "resolved"
+    assert b'id="center-panel" hx-swap-oob="true"' in r.content
 
 
 def test_notes_import_uses_agent(tmp_path, monkeypatch):

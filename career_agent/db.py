@@ -133,6 +133,14 @@ def init_schema(conn: sqlite3.Connection) -> None:
             updated_at TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS dismissed_gaps (
+            project_id TEXT NOT NULL
+                REFERENCES projects(id) ON DELETE CASCADE,
+            gap_key TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (project_id, gap_key)
+        );
+
         CREATE TABLE IF NOT EXISTS embeddings (
             entity_type TEXT NOT NULL,
             entity_id TEXT NOT NULL,

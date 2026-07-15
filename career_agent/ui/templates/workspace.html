@@ -83,6 +83,50 @@
     }
     button:disabled,
     textarea:disabled { opacity: 0.55; cursor: not-allowed; }
+    .completeness-block { margin-bottom: 1rem; }
+    .completeness-score { font-size: 0.95rem; margin: 0 0 0.5rem; }
+    .completeness-heading {
+      font-size: 0.85rem;
+      margin: 0 0 0.35rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .gap-list { list-style: none; padding: 0; margin: 0; }
+    .gap-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+    }
+    .gap-label { flex: 1; font-size: 0.9rem; }
+    .gap-actions {
+      display: flex;
+      flex-shrink: 0;
+      gap: 0.25rem;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .gap-row:hover .gap-actions,
+    .gap-row:focus-within .gap-actions { opacity: 1; }
+    .gap-action {
+      margin-top: 0;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.45rem;
+    }
+    .gap-answer-form {
+      display: grid;
+      flex-basis: 100%;
+      gap: 0.35rem;
+    }
+    .gap-answer-form textarea { width: 100%; }
+    .panel-divider {
+      border: none;
+      border-top: 1px solid rgba(128, 128, 128, 0.35);
+      margin: 0 0 1rem;
+    }
   </style>
 </head>
 <body>
