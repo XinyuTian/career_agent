@@ -42,6 +42,29 @@ def test_workspace_shell_renders_three_panels(tmp_path, monkeypatch):
     assert b"Paste notes" in r.content
 
 
+def test_workspace_has_column_splitters(tmp_path, monkeypatch):
+    client, _ = make_client(tmp_path, monkeypatch)
+    r = client.get("/")
+    assert r.status_code == 200
+    assert b'class="splitter"' in r.content
+    assert b'data-side="left"' in r.content
+    assert b'data-side="right"' in r.content
+    assert b'role="separator"' in r.content
+    assert b'aria-orientation="vertical"' in r.content
+    assert b"--left-w" in r.content
+    assert b"--right-w" in r.content
+    assert b"localStorage" not in r.content
+    assert b"sessionStorage" not in r.content
+
+
+def test_workspace_layout_formula_helper_present(tmp_path, monkeypatch):
+    """Shell must expose pure default-width helper for the load-time formula."""
+    client, _ = make_client(tmp_path, monkeypatch)
+    r = client.get("/")
+    assert b"computeDefaultWidths" in r.content
+    assert b"__workspaceLayout" in r.content
+
+
 def test_home_lists_experiences(tmp_path, monkeypatch):
     client, db = make_client(tmp_path, monkeypatch)
     repo = CareerRepository(db)

@@ -32,10 +32,29 @@
     }
     .workspace {
       display: grid;
-      grid-template-columns: 280px 1fr 320px;
-      gap: 12px;
+      grid-template-columns:
+        var(--left-w, 280px)
+        8px
+        minmax(360px, 1fr)
+        8px
+        var(--right-w, 320px);
+      column-gap: 4px;
       height: 100vh;
       padding: 12px;
+    }
+    .splitter {
+      width: 100%;
+      cursor: col-resize;
+      background: transparent;
+      border-radius: var(--radius);
+      touch-action: none;
+      user-select: none;
+    }
+    .splitter:hover,
+    .splitter:focus-visible,
+    .splitter.is-dragging {
+      background: var(--accent-soft);
+      outline: none;
     }
     #tree-panel,
     #center-panel,
@@ -266,10 +285,121 @@
   {% if request.query_params.get("flash") %}
   <div class="flash" style="margin: 0; border-radius: 0; border-left: none; border-right: none; border-top: none;">{{ request.query_params.get("flash") }}</div>
   {% endif %}
-  <div class="workspace">
+  <div class="workspace" id="workspace">
     <aside id="tree-panel">{% include "partials/tree.html" %}</aside>
+    <div
+      class="splitter"
+      data-side="left"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize experiences panel"
+      tabindex="0"
+    ></div>
     <main id="center-panel">{% include "partials/center_placeholder.html" %}</main>
+    <div
+      class="splitter"
+      data-side="right"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize assistant panel"
+      tabindex="0"
+    ></div>
     <aside id="right-panel">{% include "partials/right_notes.html" %}</aside>
   </div>
+<script>
+(function () {
+  const MIN_SIDE = 180;
+  const MIN_CENTER = 360;
+  const LEFT_MAX = 360;
+  const RIGHT_MAX = 420;
+
+  function computeDefaultWidths(viewportWidth, chrome) {
+    // chrome = horizontal padding + splitter tracks + column-gaps outside panels
+    const available = Math.max(viewportWidth - chrome, MIN_SIDE * 2 + MIN_CENTER);
+    let left = Math.min(LEFT_MAX, Math.max(MIN_SIDE, Math.round(viewportWidth * 0.20)));
+    let right = Math.min(RIGHT_MAX, Math.max(200, Math.round(viewportWidth * 0.24)));
+    const overflow = left + right + MIN_CENTER - available;
+    if (overflow > 0) {
+      const total = left + right;
+      left = Math.max(MIN_SIDE, Math.round(left - (overflow * left) / total));
+      right = Math.max(MIN_SIDE, Math.round(right - (overflow * right) / total));
+      while (left + right + MIN_CENTER > available && (left > MIN_SIDE || right > MIN_SIDE)) {
+        if (left >= right && left > MIN_SIDE) left -= 1;
+        else if (right > MIN_SIDE) right -= 1;
+        else break;
+      }
+    }
+    return { left, right };
+  }
+
+  window.__workspaceLayout = { computeDefaultWidths, MIN_SIDE, MIN_CENTER };
+
+  const workspace = document.getElementById("workspace");
+  if (!workspace) return;
+
+  function measureChrome() {
+    const styles = getComputedStyle(workspace);
+    const pad =
+      (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+    const gaps = (parseFloat(styles.columnGap) || 0) * 4; // 4 gaps among 5 tracks
+    const splitterTracks = 8 + 8;
+    return pad + gaps + splitterTracks;
+  }
+
+  function applyWidths(left, right) {
+    workspace.style.setProperty("--left-w", left + "px");
+    workspace.style.setProperty("--right-w", right + "px");
+  }
+
+  const defaults = computeDefaultWidths(window.innerWidth, measureChrome());
+  applyWidths(defaults.left, defaults.right);
+
+  let active = null; // { side, startX, startLeft, startRight, el }
+
+  function onPointerMove(event) {
+    if (!active) return;
+    const chrome = measureChrome();
+    const maxTotal = window.innerWidth - chrome - MIN_CENTER;
+    const dx = event.clientX - active.startX;
+    let left = active.startLeft;
+    let right = active.startRight;
+    if (active.side === "left") {
+      left = Math.min(Math.max(MIN_SIDE, active.startLeft + dx), maxTotal - right);
+    } else {
+      right = Math.min(Math.max(MIN_SIDE, active.startRight - dx), maxTotal - left);
+    }
+    applyWidths(left, right);
+  }
+
+  function onPointerUp(event) {
+    if (!active) return;
+    active.el.classList.remove("is-dragging");
+    active.el.releasePointerCapture?.(event.pointerId);
+    active = null;
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+  }
+
+  workspace.querySelectorAll(".splitter").forEach((el) => {
+    el.addEventListener("pointerdown", (event) => {
+      if (event.button != null && event.button !== 0) return;
+      event.preventDefault();
+      const left = parseFloat(getComputedStyle(workspace).getPropertyValue("--left-w")) || defaults.left;
+      const right = parseFloat(getComputedStyle(workspace).getPropertyValue("--right-w")) || defaults.right;
+      active = {
+        el,
+        side: el.getAttribute("data-side"),
+        startX: event.clientX,
+        startLeft: left,
+        startRight: right,
+      };
+      el.classList.add("is-dragging");
+      el.setPointerCapture?.(event.pointerId);
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+    });
+  });
+})();
+</script>
 </body>
 </html>
