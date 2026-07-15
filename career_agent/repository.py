@@ -182,6 +182,14 @@ class CareerRepository:
     def update_contribution(self, contribution: Contribution) -> None:
         self._update(contribution)
 
+    def delete_contribution(self, contribution_id: str) -> bool:
+        cur = self.conn.execute("DELETE FROM contributions WHERE id = ?", (contribution_id,))
+        deleted = cur.rowcount > 0
+        if deleted:
+            self.delete_embedding("contribution", contribution_id)
+        self.conn.commit()
+        return deleted
+
     def create_result(self, result: Result) -> None:
         self._create(result)
 
@@ -193,6 +201,14 @@ class CareerRepository:
 
     def update_result(self, result: Result) -> None:
         self._update(result)
+
+    def delete_result(self, result_id: str) -> bool:
+        cur = self.conn.execute("DELETE FROM results WHERE id = ?", (result_id,))
+        deleted = cur.rowcount > 0
+        if deleted:
+            self.delete_embedding("result", result_id)
+        self.conn.commit()
+        return deleted
 
     def create_skill_evidence(self, evidence: SkillEvidence) -> None:
         self._create(evidence)
@@ -213,6 +229,14 @@ class CareerRepository:
     def update_skill_evidence(self, evidence: SkillEvidence) -> None:
         self._update(evidence)
 
+    def delete_skill_evidence(self, evidence_id: str) -> bool:
+        cur = self.conn.execute("DELETE FROM skill_evidence WHERE id = ?", (evidence_id,))
+        deleted = cur.rowcount > 0
+        if deleted:
+            self.delete_embedding("skill_evidence", evidence_id)
+        self.conn.commit()
+        return deleted
+
     def create_story(self, story: Story) -> None:
         self._create(story)
 
@@ -224,6 +248,14 @@ class CareerRepository:
 
     def update_story(self, story: Story) -> None:
         self._update(story)
+
+    def delete_story(self, story_id: str) -> bool:
+        cur = self.conn.execute("DELETE FROM stories WHERE id = ?", (story_id,))
+        deleted = cur.rowcount > 0
+        if deleted:
+            self.delete_embedding("story", story_id)
+        self.conn.commit()
+        return deleted
 
     def create_open_question(self, question: OpenQuestion) -> None:
         self._create(question)

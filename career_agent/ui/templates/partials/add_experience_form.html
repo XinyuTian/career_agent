@@ -1,0 +1,16 @@
+<header class="panel-header">
+  <h1>Add experience</h1>
+</header>
+{% if error %}
+  <p class="error">{{ error }}</p>
+{% endif %}
+<form
+  hx-post="/experiences"
+  hx-target="#tree-panel"
+>
+  <label>Organization <input name="organization" required value="{{ organization | default('') }}"></label>
+  <label>Title <input name="title" required value="{{ title | default('') }}"></label>
+  <label>Start date <input name="start_date" value="{{ start_date | default('') }}"></label>
+  <button type="submit">Save</button>
+  <button type="button" hx-get="/partials/tree" hx-target="#tree-panel">Cancel</button>
+</form>

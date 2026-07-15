@@ -1,0 +1,67 @@
+<header class="panel-header">
+  <h2>{{ project.project_name }}</h2>
+  <p class="muted">{{ experience.organization }} — {{ experience.title }}</p>
+</header>
+{% include "partials/center_tabs.html" %}
+
+<section class="leaves-edit">
+  <form
+    hx-post="/partials/projects/{{ project.id }}?tab={{ active_tab }}"
+    hx-target="#center-panel"
+  >
+    {% for item in items %}
+      {% set row_index = loop.index0 %}
+      <fieldset class="leaf-row">
+        <input type="hidden" name="id" value="{{ item.id }}">
+        {% if item.id %}
+          <label class="delete-row">
+            <input type="checkbox" name="delete_ids" value="{{ item.id }}"> Delete
+          </label>
+        {% endif %}
+        {% for field in field_defs %}
+          <label for="{{ field.name }}-{{ row_index }}">{{ field.label }}</label>
+          {% if field.field_type == 'list' %}
+            <textarea id="{{ field.name }}-{{ row_index }}" name="{{ field.name }}" rows="2">{{ item[field.name] | join('\n') }}</textarea>
+          {% elif field.field_type == 'bool' %}
+            <select id="{{ field.name }}-{{ row_index }}" name="{{ field.name }}">
+              <option value="" {% if item[field.name] is none %}selected{% endif %}>—</option>
+              <option value="false" {% if item[field.name] is sameas false %}selected{% endif %}>No</option>
+              <option value="true" {% if item[field.name] is sameas true %}selected{% endif %}>Yes</option>
+            </select>
+          {% elif field.field_type == 'textarea' %}
+            <textarea id="{{ field.name }}-{{ row_index }}" name="{{ field.name }}" rows="2">{{ item[field.name] or '' }}</textarea>
+          {% else %}
+            <input id="{{ field.name }}-{{ row_index }}" name="{{ field.name }}" type="text" value="{{ item[field.name] or '' }}">
+          {% endif %}
+        {% endfor %}
+      </fieldset>
+    {% endfor %}
+    <fieldset class="leaf-row leaf-row-new">
+      <input type="hidden" name="id" value="">
+      {% for field in field_defs %}
+        <label for="{{ field.name }}-new">{{ field.label }}</label>
+        {% if field.field_type == 'list' %}
+          <textarea id="{{ field.name }}-new" name="{{ field.name }}" rows="2"></textarea>
+        {% elif field.field_type == 'bool' %}
+          <select id="{{ field.name }}-new" name="{{ field.name }}">
+            <option value="" selected>—</option>
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        {% elif field.field_type == 'textarea' %}
+          <textarea id="{{ field.name }}-new" name="{{ field.name }}" rows="2"></textarea>
+        {% else %}
+          <input id="{{ field.name }}-new" name="{{ field.name }}" type="text" value="">
+        {% endif %}
+      {% endfor %}
+    </fieldset>
+    <div class="form-actions">
+      <button type="submit">Save</button>
+      <button
+        type="button"
+        hx-get="/partials/projects/{{ project.id }}?tab={{ active_tab }}"
+        hx-target="#center-panel"
+      >Cancel</button>
+    </div>
+  </form>
+</section>

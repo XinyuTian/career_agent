@@ -9,11 +9,21 @@ The key principle is local memory ownership: the API provides intelligence, but 
 
 ## Setup
 
+Use a virtual environment (recommended on macOS / Homebrew Python, which blocks system-wide `pip install`):
+
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
+
 cp .env.example .env
 # add your AI_BUILDER_TOKEN to .env
-python3 -m pip install -e .
+
+pip install -e ".[ui]"
 ```
+
+For tests later: `pip install -e ".[dev,ui]"`.
+
+After activation, `career-agent` is available on your PATH for that shell. Re-run `source .venv/bin/activate` in each new terminal.
 
 Expected `.env`:
 
@@ -55,14 +65,28 @@ career-agent tailor job_description.txt --limit 15
 
 `--limit` controls how many evidence records are retrieved and defaults to 10.
 
-Browse existing data, create experiences and projects, or import notes in the
-local web UI:
+Browse and edit career evidence in the local **career workspace** — a
+three-panel web UI:
 
 ```bash
 career-agent ui
+# if 8765 is taken:
+career-agent ui --port 8766
 ```
 
-Then open http://127.0.0.1:8765.
+Then open http://127.0.0.1:8765 (or the `--port` you chose).
+
+### Career workspace
+
+| Panel | Purpose |
+|-------|---------|
+| **Left — Navigator** | Search experiences and projects; **+ Add experience** under search; **+ Add project** beside each org row. Click an experience to expand/collapse; click a project to load it in the center. |
+| **Center — Project workspace** | Tabs: Overview, Contributions, Results, Skills, Stories. Each tab has **Edit** / **Save** / **Cancel** at panel level. Overview uses existing project fields only. |
+| **Right — Paste notes** | Paste free-text notes for the selected project; runs scoped Agent 1 import and shows created/updated/conflict summary. Disabled until a project is selected. |
+
+Create endpoints (`POST /experiences`, `POST /experiences/{id}/projects`) and
+`POST /projects/{id}/notes` remain available for HTMX partial updates and
+non-HTMX redirects back to `/`.
 
 List stored entities:
 

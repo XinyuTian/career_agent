@@ -1,0 +1,21 @@
+<header class="panel-header">
+  <h2>Paste notes</h2>
+</header>
+{% if message %}
+  <p class="flash">{{ message }}</p>
+{% endif %}
+{% if project %}
+  <p class="muted">Import notes for {{ project.project_name }}.</p>
+  <form hx-post="/projects/{{ project.id }}/notes" hx-target="#right-panel">
+    <label for="notes">Project notes</label>
+    <textarea id="notes" name="notes" rows="12" placeholder="Paste notes here"></textarea>
+    <button type="submit">Import notes</button>
+  </form>
+{% else %}
+  <p class="muted">Select a project before importing notes.</p>
+  <form>
+    <label for="notes">Project notes</label>
+    <textarea id="notes" name="notes" rows="12" disabled placeholder="Paste notes here"></textarea>
+    <button type="submit" disabled>Import notes</button>
+  </form>
+{% endif %}

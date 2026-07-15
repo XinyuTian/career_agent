@@ -1,0 +1,15 @@
+<header class="panel-header">
+  <h1>Add project</h1>
+  <p class="muted">{{ experience.organization }} — {{ experience.title }}</p>
+</header>
+{% if error %}
+  <p class="error">{{ error }}</p>
+{% endif %}
+<form
+  hx-post="/experiences/{{ experience.id }}/projects"
+  hx-target="#tree-panel"
+>
+  <label>Project name <input name="project_name" required value="{{ project_name | default('') }}"></label>
+  <button type="submit">Save</button>
+  <button type="button" hx-get="/partials/tree" hx-target="#tree-panel">Cancel</button>
+</form>

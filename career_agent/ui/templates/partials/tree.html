@@ -1,0 +1,59 @@
+<header class="panel-header">
+  <h1>Career navigator</h1>
+</header>
+<label class="search">
+  <span class="sr-only">Search experiences and projects</span>
+  <input
+    type="search"
+    name="q"
+    placeholder="Search experiences and projects"
+    value="{{ q | default('') }}"
+    hx-get="/partials/tree"
+    hx-trigger="keyup changed delay:200ms"
+    hx-target="#tree-panel"
+    hx-include="this"
+  >
+</label>
+<button type="button" hx-get="/partials/add-experience" hx-target="#tree-panel">+ Add experience</button>
+
+<nav aria-label="Career navigator">
+  {% if experiences %}
+    <ul class="tree">
+      {% for experience in experiences %}
+        <li>
+          <div class="experience-row">
+            <details>
+              <summary>
+                <span>{{ experience.organization }} — {{ experience.title }}</span>
+              </summary>
+              {% set experience_projects = projects_by_experience.get(experience.id, []) %}
+              {% if experience_projects %}
+                <ul>
+                  {% for project in experience_projects %}
+                    <li>
+                      <a
+                        href="#"
+                        hx-get="/partials/projects/{{ project.id }}?tab=overview"
+                        hx-target="#center-panel"
+                      >{{ project.project_name }}</a>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p class="muted">No projects yet</p>
+              {% endif %}
+            </details>
+            <button
+              type="button"
+              onclick="event.stopPropagation()"
+              hx-get="/partials/experiences/{{ experience.id }}/add-project"
+              hx-target="#tree-panel"
+            >+ Add project</button>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No experiences yet</p>
+  {% endif %}
+</nav>

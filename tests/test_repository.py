@@ -251,3 +251,25 @@ def test_graph_summary_rejects_conflicting_scopes(tmp_path):
     summary = repo.graph_summary(experience_id="e2", project_id="p1")
 
     assert all(not rows for rows in summary.values())
+
+
+def test_delete_contribution(tmp_path):
+    repo = CareerRepository(tmp_path / "t.db")
+    repo.create_experience(Experience(id="e1", organization="Acme", title="SWE", start_date="2020"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Platform"))
+    repo.create_contribution(Contribution(id="c1", project_id="p1", action="Built CI"))
+    assert repo.delete_contribution("c1") is True
+    assert repo.list_contributions("p1") == []
+    assert repo.delete_contribution("c1") is False
+
+
+def test_delete_contribution_cleans_embedding(tmp_path):
+    repo = CareerRepository(tmp_path / "t.db")
+    repo.create_experience(Experience(id="e1", organization="Acme", title="SWE", start_date="2020"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Platform"))
+    repo.create_contribution(Contribution(id="c1", project_id="p1", action="Built CI"))
+    repo.upsert_embedding("contribution", "c1", [1.0, 0.0])
+    assert repo.counts()["embeddings"] == 1
+
+    assert repo.delete_contribution("c1") is True
+    assert repo.counts()["embeddings"] == 0

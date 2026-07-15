@@ -1,0 +1,21 @@
+<nav class="center-tabs" aria-label="Project tabs">
+  {% set tabs = [
+    ('overview', 'Overview'),
+    ('contributions', 'Contributions'),
+    ('results', 'Results'),
+    ('skills', 'Skills'),
+    ('stories', 'Stories'),
+  ] %}
+  {% for tab_id, tab_label in tabs %}
+    {% if active_tab == tab_id %}
+      <strong>{{ tab_label }}</strong>
+    {% else %}
+      <a
+        href="#"
+        hx-get="/partials/projects/{{ project.id }}?tab={{ tab_id }}"
+        hx-target="#center-panel"
+      >{{ tab_label }}</a>
+    {% endif %}
+    {% if not loop.last %} | {% endif %}
+  {% endfor %}
+</nav>

@@ -1,0 +1,45 @@
+<header class="panel-header">
+  <h2>{{ project.project_name }}</h2>
+  <p class="muted">{{ experience.organization }} — {{ experience.title }}</p>
+</header>
+{% include "partials/center_tabs.html" %}
+
+<section class="overview-edit">
+  <form
+    hx-post="/partials/projects/{{ project.id }}?tab=overview"
+    hx-target="#center-panel"
+  >
+    <label for="problem">Problem</label>
+    <textarea id="problem" name="problem" rows="3">{{ project.problem or '' }}</textarea>
+
+    <label for="business_context">Business context</label>
+    <textarea id="business_context" name="business_context" rows="3">{{ project.business_context or '' }}</textarea>
+
+    <label for="personal_role">Your role</label>
+    <input id="personal_role" name="personal_role" type="text" value="{{ project.personal_role or '' }}">
+
+    <label for="users_or_stakeholders">Stakeholders</label>
+    <input id="users_or_stakeholders" name="users_or_stakeholders" type="text" value="{{ project.users_or_stakeholders or '' }}">
+
+    <label for="responsibilities">Responsibilities (one per line)</label>
+    <textarea id="responsibilities" name="responsibilities" rows="4">{{ project.responsibilities | join('\n') }}</textarea>
+
+    <label for="project_stage">Stage</label>
+    <input id="project_stage" name="project_stage" type="text" value="{{ project.project_stage or '' }}">
+
+    <label for="timeline">Timeline</label>
+    <input id="timeline" name="timeline" type="text" value="{{ project.timeline or '' }}">
+
+    <label for="status">Status</label>
+    <input id="status" name="status" type="text" value="{{ project.status or '' }}">
+
+    <div class="form-actions">
+      <button type="submit">Save</button>
+      <button
+        type="button"
+        hx-get="/partials/projects/{{ project.id }}?tab=overview"
+        hx-target="#center-panel"
+      >Cancel</button>
+    </div>
+  </form>
+</section>

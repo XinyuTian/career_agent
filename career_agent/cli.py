@@ -120,10 +120,10 @@ def cmd_ui(args: argparse.Namespace) -> int:
         from .ui.app import run
     except ImportError as exc:
         raise RuntimeError(
-            "The local UI is not available yet; install the UI dependencies "
-            "after the UI module is added."
+            "UI dependencies missing. Install with: pip install -e '.[ui]'"
         ) from exc
-    run()
+    print(f"Starting career UI at http://{args.host}:{args.port}")
+    run(host=args.host, port=args.port)
     return 0
 
 
@@ -160,6 +160,8 @@ def main(argv: list[str] | None = None) -> int:
     projects.set_defaults(func=cmd_list_projects)
 
     ui = sub.add_parser("ui", help="Start the local career database UI.")
+    ui.add_argument("--host", default="127.0.0.1", help="Bind address (default: 127.0.0.1).")
+    ui.add_argument("--port", type=int, default=8765, help="Port (default: 8765).")
     ui.set_defaults(func=cmd_ui)
 
     args = parser.parse_args(argv)
