@@ -443,13 +443,22 @@ def _is_htmx(request: Request) -> bool:
     return request.headers.get("HX-Request") == "true"
 
 
+def _active_projects(projects: list[Project]) -> list[Project]:
+    return [
+        project
+        for project in projects
+        if (project.status or "").strip().lower() != "archived"
+    ]
+
+
 def _tree_data(
     repo: CareerRepository,
     q: str | None = None,
 ) -> tuple[list[Experience], dict[str, list[Project]]]:
     experiences = repo.list_experiences()
     projects_by_experience = {
-        experience.id: repo.list_projects(experience.id) for experience in experiences
+        experience.id: _active_projects(repo.list_projects(experience.id))
+        for experience in experiences
     }
     if not q or not q.strip():
         return experiences, projects_by_experience

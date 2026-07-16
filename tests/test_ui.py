@@ -751,6 +751,20 @@ def test_add_experience_validation_preserves_selected_project(tmp_path, monkeypa
     assert len(CareerRepository(db).list_experiences()) == 1
 
 
+def test_archived_projects_hidden_from_tree(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Acme", title="SWE"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Visible One"))
+    repo.create_project(
+        Project(id="p2", experience_id="e1", project_name="Hidden One", status="archived")
+    )
+
+    html = client.get("/partials/tree").text
+    assert "Visible One" in html
+    assert "Hidden One" not in html
+
+
 def test_tree_marks_selected_project(tmp_path, monkeypatch):
     client, db = make_client(tmp_path, monkeypatch)
     repo = CareerRepository(db)
