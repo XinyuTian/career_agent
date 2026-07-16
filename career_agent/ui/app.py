@@ -986,6 +986,104 @@ def create_app(db_path: Path | None = None) -> FastAPI:
             return _render_tree(request, repo)
         return _redirect("/", flash=f"Added project: {project.project_name}")
 
+    @app.get("/partials/projects/{project_id}/rename-form")
+    def partial_rename_project(
+        request: Request,
+        project_id: str,
+        q: str = "",
+        selected_project_id: str = "",
+    ):
+        repo = get_repo()
+        project = repo.get_project(project_id)
+        if project is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return templates.TemplateResponse(
+            request,
+            "partials/rename_project_form.html",
+            {
+                "project": project,
+                "q": q,
+                "selected_project_id": selected_project_id or project_id,
+            },
+        )
+
+    @app.post("/projects/{project_id}/rename")
+    def rename_project(
+        request: Request,
+        project_id: str,
+        project_name: str = Form(...),
+        q: str = Form(""),
+        selected_project_id: str = Form(""),
+    ):
+        repo = get_repo()
+        project = repo.get_project(project_id)
+        if project is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        name = project_name.strip()
+        if not name:
+            return templates.TemplateResponse(
+                request,
+                "partials/rename_project_form.html",
+                {
+                    "project": project,
+                    "q": q,
+                    "selected_project_id": selected_project_id or project_id,
+                    "error": "Project name is required.",
+                },
+                status_code=400,
+            )
+        repo.update_project(replace(project, project_name=name))
+        if _is_htmx(request):
+            return _render_tree(
+                request,
+                repo,
+                q=q or None,
+                selected_project_id=selected_project_id or project_id,
+            )
+        return _redirect("/", flash=f"Renamed project: {name}")
+
+    @app.post("/projects/{project_id}/duplicate")
+    def duplicate_project(
+        request: Request,
+        project_id: str,
+        q: str = Form(""),
+        selected_project_id: str = Form(""),
+    ):
+        repo = get_repo()
+        new_project = repo.duplicate_project(project_id)
+        if new_project is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        if _is_htmx(request):
+            return _render_tree(
+                request,
+                repo,
+                q=q or None,
+                selected_project_id=selected_project_id or None,
+            )
+        return _redirect("/", flash=f"Duplicated project: {new_project.project_name}")
+
+    @app.post("/projects/{project_id}/archive")
+    def archive_project(
+        request: Request,
+        project_id: str,
+        q: str = Form(""),
+        selected_project_id: str = Form(""),
+    ):
+        repo = get_repo()
+        project = repo.get_project(project_id)
+        if project is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        repo.update_project(replace(project, status="archived"))
+        new_selected = "" if selected_project_id == project_id else selected_project_id
+        if _is_htmx(request):
+            return _render_tree(
+                request,
+                repo,
+                q=q or None,
+                selected_project_id=new_selected or None,
+            )
+        return _redirect("/", flash=f"Archived project: {project.project_name}")
+
     @app.post("/projects/{project_id}/notes")
     def import_notes(request: Request, project_id: str, notes: str = Form(...)):
         repo = get_repo()
