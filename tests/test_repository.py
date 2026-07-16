@@ -339,3 +339,12 @@ def test_duplicate_project_deep_copies_all_leaves(tmp_path):
 def test_duplicate_project_missing_returns_none(tmp_path):
     repo = make_repository(tmp_path)
     assert repo.duplicate_project("does-not-exist") is None
+
+
+def test_duplicate_project_disambiguates_repeated_copies(tmp_path):
+    repo = make_repository(tmp_path)
+    first = repo.duplicate_project("p1")
+    second = repo.duplicate_project("p1")
+    assert first is not None and second is not None
+    names = {p.project_name for p in repo.list_projects("e1")}
+    assert names == {"Platform", "Platform (copy)", "Platform (copy 2)"}

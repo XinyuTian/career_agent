@@ -171,10 +171,15 @@ class CareerRepository:
         original = self.get_project(project_id)
         if original is None:
             return None
+        new_name = f"{original.project_name} (copy)"
+        attempt = 2
+        while self.find_project_by_key(original.experience_id, new_name) is not None:
+            new_name = f"{original.project_name} (copy {attempt})"
+            attempt += 1
         new_project = replace(
             original,
             id=str(uuid.uuid4()),
-            project_name=f"{original.project_name} (copy)",
+            project_name=new_name,
             status=None,
             created_at=now_iso(),
             updated_at=now_iso(),
