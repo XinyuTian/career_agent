@@ -14,7 +14,7 @@
 - No DB schema change — reuse the existing `Project.status` field for archiving.
 - The dropdown menu uses native `<details>`/`<summary>` — no new JavaScript.
 - Archived value is the exact string `"archived"` (lowercase).
-- Duplicated project name is exactly `"<original name> (copy)"`.
+- Duplicated project name is `"<original name> (copy)"`, disambiguated with a numeric suffix (`"<name> (copy 2)"`, `"<name> (copy 3)"`, …) when that name already exists within the experience. This is required because a `UNIQUE INDEX ux_projects_match ON projects (experience_id, project_name)` forbids duplicate names within an experience.
 - All action routes re-render `partials/tree.html` for HTMX requests and preserve the current search `q` and `selected_project_id` where applicable.
 - Run tests with `python -m pytest` from the repo root (`/Users/sarahtxy/dev/career_agent`).
 
@@ -28,7 +28,7 @@
 
 **Interfaces:**
 - Consumes: existing `get_project`, `create_project`, `list_contributions`, `create_contribution`, `list_results`, `create_result`, `list_skill_evidence`, `create_skill_evidence`, `list_stories`, `create_story`; `now_iso` (already imported).
-- Produces: `CareerRepository.duplicate_project(self, project_id: str) -> Project | None` — creates a new `Project` (new uuid id, name `"<name> (copy)"`, `status=None`) plus deep copies of all contributions, results, skill evidence, and stories (new uuid ids, `project_id` pointed at the copy). Returns the new `Project`, or `None` if the source project does not exist.
+- Produces: `CareerRepository.duplicate_project(self, project_id: str) -> Project | None` — creates a new `Project` (new uuid id, a collision-free name derived from `"<name> (copy)"`, `status=None`) plus deep copies of all contributions, results, skill evidence, and stories (new uuid ids, `project_id` pointed at the copy). Returns the new `Project`, or `None` if the source project does not exist. The name must not collide with the unique index `ux_projects_match (experience_id, project_name)`: use `"<name> (copy)"` if free, else `"<name> (copy 2)"`, `"<name> (copy 3)"`, … .
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -78,6 +78,15 @@ def test_duplicate_project_deep_copies_all_leaves(tmp_path):
 def test_duplicate_project_missing_returns_none(tmp_path):
     repo = make_repository(tmp_path)
     assert repo.duplicate_project("does-not-exist") is None
+
+
+def test_duplicate_project_disambiguates_repeated_copies(tmp_path):
+    repo = make_repository(tmp_path)
+    first = repo.duplicate_project("p1")
+    second = repo.duplicate_project("p1")
+    assert first is not None and second is not None
+    names = {p.project_name for p in repo.list_projects("e1")}
+    assert names == {"Platform", "Platform (copy)", "Platform (copy 2)"}
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -108,10 +117,15 @@ In `career_agent/repository.py`, insert this method immediately after `update_pr
         original = self.get_project(project_id)
         if original is None:
             return None
+        new_name = f"{original.project_name} (copy)"
+        attempt = 2
+        while self.find_project_by_key(original.experience_id, new_name) is not None:
+            new_name = f"{original.project_name} (copy {attempt})"
+            attempt += 1
         new_project = replace(
             original,
             id=str(uuid.uuid4()),
-            project_name=f"{original.project_name} (copy)",
+            project_name=new_name,
             status=None,
             created_at=now_iso(),
             updated_at=now_iso(),
