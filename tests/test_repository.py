@@ -294,3 +294,48 @@ def test_update_open_question_status(tmp_path):
     q.status = "dismissed"
     repo.update_open_question(q)
     assert repo.list_open_questions(status="dismissed")[0].id == "q1"
+
+
+def test_duplicate_project_deep_copies_all_leaves(tmp_path):
+    repo = make_repository(tmp_path)
+    repo.create_contribution(
+        Contribution(id="c1", project_id="p1", action="Built pipeline",
+                     collaborators=["Ada", "Grace"])
+    )
+    repo.create_result(
+        Result(id="r1", project_id="p1", metric_name="latency", is_estimate=True)
+    )
+    repo.create_skill_evidence(
+        SkillEvidence(id="s1", project_id="p1", skill="Python", independently_used=True)
+    )
+    repo.create_story(Story(id="st1", project_id="p1", competency="Ownership"))
+
+    copy = repo.duplicate_project("p1")
+
+    assert copy is not None
+    assert copy.id != "p1"
+    assert copy.project_name == "Platform (copy)"
+    assert copy.experience_id == "e1"
+    assert copy.status is None
+    assert copy.responsibilities == ["design", "delivery"]
+
+    # Original is untouched
+    assert len(repo.list_projects("e1")) == 2
+    assert len(repo.list_contributions("p1")) == 1
+
+    # Copies exist with new ids pointing at the new project
+    copied_contributions = repo.list_contributions(copy.id)
+    assert len(copied_contributions) == 1
+    assert copied_contributions[0].id != "c1"
+    assert copied_contributions[0].action == "Built pipeline"
+    assert copied_contributions[0].collaborators == ["Ada", "Grace"]
+    assert len(repo.list_results(copy.id)) == 1
+    assert repo.list_results(copy.id)[0].is_estimate is True
+    assert len(repo.list_skill_evidence(copy.id)) == 1
+    assert repo.list_skill_evidence(copy.id)[0].independently_used is True
+    assert len(repo.list_stories(copy.id)) == 1
+
+
+def test_duplicate_project_missing_returns_none(tmp_path):
+    repo = make_repository(tmp_path)
+    assert repo.duplicate_project("does-not-exist") is None

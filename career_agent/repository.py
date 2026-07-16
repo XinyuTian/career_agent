@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 import math
 import sqlite3
-from dataclasses import asdict, fields
+import uuid
+from dataclasses import asdict, fields, replace
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -165,6 +166,61 @@ class CareerRepository:
 
     def update_project(self, project: Project) -> None:
         self._update(project)
+
+    def duplicate_project(self, project_id: str) -> Project | None:
+        original = self.get_project(project_id)
+        if original is None:
+            return None
+        new_project = replace(
+            original,
+            id=str(uuid.uuid4()),
+            project_name=f"{original.project_name} (copy)",
+            status=None,
+            created_at=now_iso(),
+            updated_at=now_iso(),
+        )
+        self.create_project(new_project)
+        for contribution in self.list_contributions(project_id):
+            self.create_contribution(
+                replace(
+                    contribution,
+                    id=str(uuid.uuid4()),
+                    project_id=new_project.id,
+                    created_at=now_iso(),
+                    updated_at=now_iso(),
+                )
+            )
+        for result in self.list_results(project_id):
+            self.create_result(
+                replace(
+                    result,
+                    id=str(uuid.uuid4()),
+                    project_id=new_project.id,
+                    created_at=now_iso(),
+                    updated_at=now_iso(),
+                )
+            )
+        for evidence in self.list_skill_evidence(project_id):
+            self.create_skill_evidence(
+                replace(
+                    evidence,
+                    id=str(uuid.uuid4()),
+                    project_id=new_project.id,
+                    created_at=now_iso(),
+                    updated_at=now_iso(),
+                )
+            )
+        for story in self.list_stories(project_id):
+            self.create_story(
+                replace(
+                    story,
+                    id=str(uuid.uuid4()),
+                    project_id=new_project.id,
+                    created_at=now_iso(),
+                    updated_at=now_iso(),
+                )
+            )
+        return new_project
 
     def create_contribution(self, contribution: Contribution) -> None:
         self._create(contribution)
