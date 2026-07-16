@@ -96,6 +96,54 @@
     .tree-project.is-selected {
       background: var(--accent-soft);
     }
+    .tree-project-row {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .tree-project-row .tree-project { flex: 1; min-width: 0; }
+    .proj-menu { position: relative; flex-shrink: 0; }
+    .proj-menu > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 0.1rem 0.4rem;
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      user-select: none;
+      line-height: 1;
+    }
+    .proj-menu > summary::-webkit-details-marker { display: none; }
+    .proj-menu > summary::marker { content: ""; }
+    .proj-menu[open] > summary { background: var(--accent-soft); }
+    .proj-menu-list {
+      position: absolute;
+      right: 0;
+      top: 100%;
+      z-index: 10;
+      margin-top: 2px;
+      min-width: 140px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      padding: 0.25rem;
+      display: flex;
+      flex-direction: column;
+    }
+    .proj-menu-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      margin-top: 0;
+      border: none;
+      background: none;
+      padding: 0.35rem 0.5rem;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+    .proj-menu-item:hover { background: var(--accent-soft); }
     .tab {
       display: inline-block;
       padding: 0.35rem 0.75rem;

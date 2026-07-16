@@ -751,6 +751,20 @@ def test_add_experience_validation_preserves_selected_project(tmp_path, monkeypa
     assert len(CareerRepository(db).list_experiences()) == 1
 
 
+def test_archived_projects_hidden_from_tree(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Acme", title="SWE"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Visible One"))
+    repo.create_project(
+        Project(id="p2", experience_id="e1", project_name="Hidden One", status="archived")
+    )
+
+    html = client.get("/partials/tree").text
+    assert "Visible One" in html
+    assert "Hidden One" not in html
+
+
 def test_tree_marks_selected_project(tmp_path, monkeypatch):
     client, db = make_client(tmp_path, monkeypatch)
     repo = CareerRepository(db)
@@ -779,4 +793,91 @@ def test_project_overview_oob_selects_tree_project(tmp_path, monkeypatch):
     assert b'<details open>' in oob_tree
     assert b"Google" in oob_tree
     assert b'value="Ad"' in oob_tree
+
+
+def test_tree_details_open_by_default(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    _seed_project(db)
+    html = client.get("/partials/tree").text
+    assert "<details open>" in html
+
+
+def test_selected_project_shows_action_menu(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    _seed_project(db)
+    selected = client.get("/partials/tree?selected_project_id=p1").text
+    assert "proj-menu" in selected
+    assert "Rename" in selected
+    assert "Duplicate" in selected
+    assert "Archive" in selected
+
+    unselected = client.get("/partials/tree").text
+    assert "proj-menu" not in unselected
+
+
+def _seed_project(db):
+    repo = CareerRepository(db)
+    repo.create_experience(Experience(id="e1", organization="Acme", title="SWE"))
+    repo.create_project(Project(id="p1", experience_id="e1", project_name="Platform"))
+    return repo
+
+
+def test_rename_form_partial_prefills_name(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    _seed_project(db)
+    r = client.get("/partials/projects/p1/rename-form?selected_project_id=p1")
+    assert r.status_code == 200
+    assert 'value="Platform"' in r.text
+    assert "/projects/p1/rename" in r.text
+
+
+def test_rename_project_updates_name(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    _seed_project(db)
+    r = client.post(
+        "/projects/p1/rename",
+        data={"project_name": "Renamed Platform", "selected_project_id": "p1"},
+        headers={"HX-Request": "true"},
+    )
+    assert r.status_code == 200
+    assert "Renamed Platform" in r.text
+    assert CareerRepository(db).get_project("p1").project_name == "Renamed Platform"
+
+
+def test_rename_project_blank_is_rejected(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    _seed_project(db)
+    r = client.post(
+        "/projects/p1/rename",
+        data={"project_name": "   ", "selected_project_id": "p1"},
+        headers={"HX-Request": "true"},
+    )
+    assert r.status_code == 400
+    assert CareerRepository(db).get_project("p1").project_name == "Platform"
+
+
+def test_duplicate_project_route_adds_copy(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    _seed_project(db)
+    r = client.post(
+        "/projects/p1/duplicate",
+        data={"selected_project_id": "p1"},
+        headers={"HX-Request": "true"},
+    )
+    assert r.status_code == 200
+    assert "Platform (copy)" in r.text
+    assert len(CareerRepository(db).list_projects("e1")) == 2
+
+
+def test_archive_project_route_hides_project(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    _seed_project(db)
+    r = client.post(
+        "/projects/p1/archive",
+        data={"selected_project_id": "p1"},
+        headers={"HX-Request": "true"},
+    )
+    assert r.status_code == 200
+    assert "Platform" not in r.text
+    assert CareerRepository(db).get_project("p1").status == "archived"
 

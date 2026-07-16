@@ -1,0 +1,18 @@
+<header class="panel-header experiences-header">
+  <h1>Rename project</h1>
+</header>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form hx-post="/projects/{{ project.id }}/rename" hx-target="#tree-panel">
+  <input type="hidden" name="q" value="{{ q | default('') }}">
+  <input type="hidden" name="selected_project_id" value="{{ selected_project_id | default('') }}">
+  <label>Project name
+    <input name="project_name" required value="{{ project.project_name }}">
+  </label>
+  <button type="submit" class="btn btn-primary">Save</button>
+  <button
+    type="button"
+    class="btn btn-secondary"
+    hx-get="/partials/tree?q={{ q | default('') | urlencode }}&selected_project_id={{ selected_project_id | default('') | urlencode }}"
+    hx-target="#tree-panel"
+  >Cancel</button>
+</form>
