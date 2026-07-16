@@ -795,6 +795,26 @@ def test_project_overview_oob_selects_tree_project(tmp_path, monkeypatch):
     assert b'value="Ad"' in oob_tree
 
 
+def test_tree_details_open_by_default(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    _seed_project(db)
+    html = client.get("/partials/tree").text
+    assert "<details open>" in html
+
+
+def test_selected_project_shows_action_menu(tmp_path, monkeypatch):
+    client, db = make_client(tmp_path, monkeypatch)
+    _seed_project(db)
+    selected = client.get("/partials/tree?selected_project_id=p1").text
+    assert "proj-menu" in selected
+    assert "Rename" in selected
+    assert "Duplicate" in selected
+    assert "Archive" in selected
+
+    unselected = client.get("/partials/tree").text
+    assert "proj-menu" not in unselected
+
+
 def _seed_project(db):
     repo = CareerRepository(db)
     repo.create_experience(Experience(id="e1", organization="Acme", title="SWE"))

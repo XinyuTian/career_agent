@@ -29,7 +29,7 @@
         <li>
           <div class="experience-row">
             {% set experience_projects = projects_by_experience.get(experience.id, []) %}
-            <details{% if experience_projects | selectattr("id", "equalto", selected_project_id) | list %} open{% endif %}>
+            <details open>
               <summary>
                 <span class="tree-org">{{ experience.organization }}</span>
                 <span class="tree-role">{{ experience.title }}</span>
@@ -37,7 +37,7 @@
               {% if experience_projects %}
                 <ul>
                   {% for project in experience_projects %}
-                    <li>
+                    <li class="tree-project-row">
                       <a
                         href="#"
                         class="tree-project{% if selected_project_id == project.id %} is-selected{% endif %}"
@@ -45,6 +45,35 @@
                         hx-target="#center-panel"
                         hx-include="[name='q']"
                       >{{ project.project_name }}</a>
+                      {% if selected_project_id == project.id %}
+                        <details class="proj-menu">
+                          <summary class="proj-menu-toggle" aria-label="Project actions">⋮</summary>
+                          <div class="proj-menu-list">
+                            <button
+                              type="button"
+                              class="proj-menu-item"
+                              hx-get="/partials/projects/{{ project.id }}/rename-form"
+                              hx-target="#tree-panel"
+                              hx-include="[name='q'], [name='selected_project_id']"
+                            >Rename</button>
+                            <button
+                              type="button"
+                              class="proj-menu-item"
+                              hx-post="/projects/{{ project.id }}/duplicate"
+                              hx-target="#tree-panel"
+                              hx-include="[name='q'], [name='selected_project_id']"
+                            >Duplicate</button>
+                            <button
+                              type="button"
+                              class="proj-menu-item"
+                              hx-post="/projects/{{ project.id }}/archive"
+                              hx-target="#tree-panel"
+                              hx-include="[name='q'], [name='selected_project_id']"
+                              hx-confirm="Archive this project? It will be hidden from the tree."
+                            >Archive</button>
+                          </div>
+                        </details>
+                      {% endif %}
                     </li>
                   {% endfor %}
                 </ul>
