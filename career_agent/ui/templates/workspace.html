@@ -92,6 +92,9 @@
       border-radius: var(--radius);
       color: var(--text);
       text-decoration: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .tree-project.is-selected {
       background: var(--accent-soft);
@@ -100,13 +103,30 @@
       display: flex;
       align-items: center;
       gap: 0.25rem;
+      width: 100%;
     }
     .tree-project-row .tree-project { flex: 1; min-width: 0; }
-    .proj-menu { position: relative; flex-shrink: 0; }
+    .proj-menu {
+      position: relative;
+      flex-shrink: 0;
+      margin-left: auto;
+      width: 1.5rem;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .tree-project-row:hover .proj-menu,
+    .tree-project-row:focus-within .proj-menu,
+    .proj-menu[open] {
+      opacity: 1;
+    }
     .proj-menu > summary {
       list-style: none;
       cursor: pointer;
-      padding: 0.1rem 0.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.5rem;
+      padding: 0.1rem 0;
       border-radius: var(--radius);
       color: var(--text-muted);
       user-select: none;
@@ -240,9 +260,17 @@
     .tree { list-style: none; padding: 0; margin: 0.75rem 0 0; }
     .tree ul { list-style: none; padding-left: 1rem; margin: 0.25rem 0; }
     .tree summary { cursor: pointer; }
-    .experience-row { display: flex; align-items: flex-start; gap: 0.5rem; }
-    .experience-row details { flex: 1; min-width: 0; }
-    .experience-row > button { flex-shrink: 0; margin-top: 0; font-size: 0.85rem; }
+    .experience-row { position: relative; }
+    .experience-row details { min-width: 0; }
+    .experience-row details > summary { padding-right: 7rem; }
+    .experience-row > button {
+      position: absolute;
+      top: 0;
+      right: 0;
+      margin-top: 0;
+      font-size: 0.85rem;
+      z-index: 1;
+    }
     .error { color: #c00; font-size: 0.9rem; }
     .flash {
       background: rgba(0, 128, 0, 0.12);

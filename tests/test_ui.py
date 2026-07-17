@@ -802,7 +802,7 @@ def test_tree_details_open_by_default(tmp_path, monkeypatch):
     assert "<details open>" in html
 
 
-def test_selected_project_shows_action_menu(tmp_path, monkeypatch):
+def test_project_rows_show_action_menu(tmp_path, monkeypatch):
     client, db = make_client(tmp_path, monkeypatch)
     _seed_project(db)
     selected = client.get("/partials/tree?selected_project_id=p1").text
@@ -812,7 +812,10 @@ def test_selected_project_shows_action_menu(tmp_path, monkeypatch):
     assert "Archive" in selected
 
     unselected = client.get("/partials/tree").text
-    assert "proj-menu" not in unselected
+    assert "proj-menu" in unselected
+    assert "Rename" in unselected
+    assert "Duplicate" in unselected
+    assert "Archive" in unselected
 
 
 def _seed_project(db):
