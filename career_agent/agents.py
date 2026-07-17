@@ -121,6 +121,7 @@ class CareerKnowledgeBuilderAgent:
             system=KNOWLEDGE_BUILDER_SYSTEM,
             user=user,
             schema_hint=KNOWLEDGE_BUILDER_SCHEMA,
+            max_tokens=8000,
         )
         result = apply_import_payload(
             self.repo,

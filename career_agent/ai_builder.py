@@ -52,6 +52,7 @@ class AIBuilderClient:
             user=f"{user}\n\nReturn only valid JSON matching this shape:\n{schema_hint}",
             model=model,
             max_tokens=max_tokens,
+            json_mode=True,
         )
         return parse_json_object(content)
 
@@ -62,8 +63,9 @@ class AIBuilderClient:
         user: str,
         model: str | None = None,
         max_tokens: int = 4000,
+        json_mode: bool = False,
     ) -> str:
-        payload = {
+        payload: dict[str, Any] = {
             "model": model or self.settings.chat_model,
             "messages": [
                 {"role": "system", "content": system},
@@ -72,11 +74,20 @@ class AIBuilderClient:
             "temperature": 1.0,
             "max_tokens": max_tokens,
         }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
         data = self._post_json("/chat/completions", payload)
         try:
-            return data["choices"][0]["message"]["content"] or ""
+            choice = data["choices"][0]
+            content = choice["message"]["content"] or ""
         except (KeyError, IndexError, TypeError) as exc:
             raise AIBuilderError(f"Unexpected chat response: {data}") from exc
+        if choice.get("finish_reason") == "length":
+            raise AIBuilderError(
+                "Model response was truncated before completion (hit the max_tokens limit "
+                f"of {max_tokens}). Retry with a higher max_tokens or shorter input."
+            )
+        return content
 
     def embed(self, texts: list[str], model: str | None = None) -> list[list[float]]:
         payload = {"model": model or self.settings.embedding_model, "input": texts}
@@ -96,9 +107,23 @@ def parse_json_object(text: str) -> dict[str, Any]:
             stripped = stripped[4:].strip()
     try:
         return json.loads(stripped)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
         start = stripped.find("{")
         end = stripped.rfind("}")
         if start >= 0 and end > start:
-            return json.loads(stripped[start : end + 1])
-        raise
+            try:
+                return json.loads(stripped[start : end + 1])
+            except json.JSONDecodeError as inner:
+                raise _json_error(stripped, inner) from inner
+        raise _json_error(stripped, exc) from exc
+
+
+def _json_error(raw: str, exc: json.JSONDecodeError) -> AIBuilderError:
+    lo = max(exc.pos - 120, 0)
+    hi = min(exc.pos + 120, len(raw))
+    snippet = raw[lo:hi]
+    return AIBuilderError(
+        f"Model did not return valid JSON ({exc.msg} at line {exc.lineno} "
+        f"column {exc.colno}, char {exc.pos}). This usually means the response was "
+        f"truncated or malformed. Offending region:\n...{snippet}..."
+    )
